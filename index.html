@@ -598,9 +598,9 @@ function genSequence(level){
     let terms,ruleTxt;
     if(level==='lp'){
       const kind=choice(['arith','arith','geo']);
-      if(kind==='arith'){const s=rint(1,9),d=rint(2,9);
+      if(kind==='arith'){const s=rint(1,6),d=rint(1,4);
         terms=[0,1,2,3,4].map(i=>s+i*d);ruleTxt='add '+d+' each time';}
-      else{const s=rint(1,4),r=choice([2,3]);
+      else{const s=rint(1,3),r=2;
         terms=[0,1,2,3,4].map(i=>s*Math.pow(r,i));ruleTxt='multiply by '+r+' each time';}
     }else{
       const kind=choice(['arith','geo','sq']);
@@ -653,7 +653,7 @@ function magicPuzzleLP(){return{
   how:'<p>This is a <b>magic box</b>! 🪄 Every line must add up to the <b>same magic number</b> — across ➡️, down ⬇️ and corner-to-corner ↘️.</p>'+
       '<p>Some numbers ran away! Type them back in the yellow boxes.</p>'+
       '<div class="ex">If a row shows 4 + ? + 8 and the magic number is 15, then ? = 15 − 4 − 8 = <b>3</b></div>',
-  mount(area){mountMagic(area,{n:3,a:()=>1,b:()=>rint(0,4),blanks:()=>rint(2,3)});}
+  mount(area){mountMagic(area,{n:3,a:()=>1,b:()=>0,blanks:()=>rint(2,3)});}
 };}
 
 /* 3. Balance the Scale */
@@ -664,7 +664,7 @@ function balancePuzzle(){return{
       '<p>Add the weights on each side. What number makes them equal? Type it in the box!</p>'+
       '<div class="ex">Left: 3 + 4 = 7. Right: 5 + ? . So ? = <b>2</b>!</div>',
   mount(area){
-    const a=rint(2,10),b=rint(2,10),c=rint(1,a+b-1),ans=a+b-c;
+    const a=rint(2,6),b=rint(2,6),c=rint(1,a+b-1),ans=a+b-c;
     area.appendChild(el('p','pz-goal','Make both sides equal! ⚖️'));
     const sc=el('div','scale');
     const left=el('div','pan');
@@ -708,7 +708,7 @@ function quickPuzzle(){return{
     let ans;
     function next(){
       const add=Math.random()<.6;
-      let a=rint(2,20),b=rint(2,20);
+      let a=rint(2,10),b=rint(2,10);
       if(add){ans=a+b;q.textContent=a+' + '+b+' =';}
       else{if(b>a)[a,b]=[b,a];ans=a-b;q.textContent=a+' − '+b+' =';}
       inp.value='';inp.focus();
@@ -765,7 +765,8 @@ function mirrorPuzzle(){return{
       '<div class="ex">Tip: whatever is near the middle line on the left should be near the line on the right too!</div>',
   mount(area){
     const shape=choice(MIRROR_SHAPES);
-    area.appendChild(el('p','pz-goal','Draw the mirror half of the '+shape.name));
+    const goalText = el('p','pz-goal','Draw the mirror half of the '+shape.name);
+    area.appendChild(goalText);
     const {c,ctx,w,h}=setupCanvas(area,0.75);
     if(!ctx)return;
     const mid=w/2;
@@ -774,12 +775,34 @@ function mirrorPuzzle(){return{
     for(const poly of targetLines)
       for(const p of samplePoly(poly,7))targetPts.push([2*mid-p[0],p[1]]);
     let strokes=[],cur=null;
+
+    let warnTimer=null;
+    function showLeftWarning(){
+      goalText.innerHTML='<span style="color:var(--red)">Draw on the right side of the dotted line! 👉</span>';
+      clearTimeout(warnTimer);
+      warnTimer=setTimeout(()=>{
+        goalText.innerHTML='Draw the mirror half of the '+shape.name;
+      },1800);
+    }
+
     function redraw(showGhost){
       ctx.clearRect(0,0,w,h);
       ctx.save();
       ctx.strokeStyle='#B9C6E8';ctx.setLineDash([7,6]);ctx.lineWidth=3;
       ctx.beginPath();ctx.moveTo(mid,6);ctx.lineTo(mid,h-6);ctx.stroke();
       ctx.restore();
+
+      // Faint helper guide on empty canvas
+      if(strokes.length===0 && !showGhost){
+        ctx.save();
+        ctx.fillStyle='#A6ADC2';
+        ctx.font='700 15px "Nunito",sans-serif';
+        ctx.textAlign='center';
+        ctx.fillText('Draw your mirror', mid + (w - mid)/2, h/2 - 10);
+        ctx.fillText('reflection here 👉', mid + (w - mid)/2, h/2 + 12);
+        ctx.restore();
+      }
+
       ctx.lineWidth=5;ctx.lineCap='round';ctx.lineJoin='round';
       ctx.strokeStyle='#223057';
       for(const poly of targetLines){
@@ -807,12 +830,22 @@ function mirrorPuzzle(){return{
     function pos(e){const r=c.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];}
     c.addEventListener('pointerdown',e=>{
       e.preventDefault();c.setPointerCapture(e.pointerId);
-      const p=pos(e);if(p[0]<=mid+4)return;
-      cur=[p];strokes.push(cur);redraw(false);
+      const p=pos(e);
+      if(p[0]<=mid-4){
+        showLeftWarning();
+        return;
+      }
+      const sx=Math.max(mid+2,p[0]);
+      cur=[[sx,p[1]]];strokes.push(cur);redraw(false);
     });
     c.addEventListener('pointermove',e=>{
       if(!cur)return;const p=pos(e);
-      if(p[0]>mid+2){cur.push(p);redraw(false);}
+      if(p[0]<=mid-4){
+        showLeftWarning();
+        return;
+      }
+      const mx=Math.max(mid+2,p[0]);
+      cur.push([mx,p[1]]);redraw(false);
     });
     const up=()=>{cur=null;};
     c.addEventListener('pointerup',up);c.addEventListener('pointercancel',up);

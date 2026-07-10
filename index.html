@@ -541,8 +541,9 @@ function makeMagic(n,a,b,wantBlanks){
 }
 function mountMagic(area,cfg){
   const m=makeMagic(cfg.n,cfg.a(),cfg.b(),cfg.blanks());
-  area.appendChild(el('p','pz-goal',
-    'Every row ➡️, column ⬇️ and diagonal ↘️ must add up to <span class="big">'+m.S+'</span>'));
+  const goalEn = 'Every row ➡️, column ⬇️ and diagonal ↘️ must add up to <span class="big">'+m.S+'</span>';
+  const goalMl = 'എല്ലാ വരികളും ➡️, നിരകളും ⬇️, കോണോടുകോണും ↘️ കൂട്ടിയാൽ തുക <span class="big">'+m.S+'</span> ലഭിക്കണം';
+  area.appendChild(el('p','pz-goal', currentLang === 'en' ? goalEn : goalMl));
   const grid=el('div','grid-sq');
   grid.style.gridTemplateColumns='repeat('+m.n+',auto)';
   const inputs=[];
@@ -552,22 +553,22 @@ function mountMagic(area,cfg){
   });
   area.appendChild(grid);
   const act=el('div','pz-actions');
-  const check=el('button','btn primary','Check ✓');
-  const hint=el('button','btn warn small','💡 Hint');
+  const check=checkBtn();
+  const hint=hintBtn();
   act.append(check,hint);area.appendChild(act);
   check.addEventListener('click',()=>{
     const vals=m.puzzle.slice();let empty=false;
     for(const {i,inp} of inputs){const v=readInt(inp);if(v===null){empty=true;markBad(inp);}vals[i]=v;}
-    if(empty){lose('Fill every yellow box first! ✏️');return;}
+    if(empty){lose(currentLang === 'en' ? 'Fill every yellow box first! ✏️' : 'മഞ്ഞ പെട്ടികൾ ആദ്യം പൂരിപ്പിക്കുക! ✏️');return;}
     let ok=true;
     for(const L of m.lines){
       const s=L.cells.reduce((x,i)=>x+vals[i],0);
       if(s!==m.S){ok=false;}
     }
-    if(ok){inputs.forEach(o=>markGood(o.inp));win('Magic! Every line makes '+m.S+'! 🪄');}
+    if(ok){inputs.forEach(o=>markGood(o.inp));win(currentLang === 'en' ? 'Magic! Every line makes '+m.S+'! 🪄' : 'Super! എല്ലാ വരികളും '+m.S+' ആകുന്നു! 🪄');}
     else{
       for(const {i,inp} of inputs) if(vals[i]!==m.full[i]) markBad(inp);
-      lose('Some lines don\'t add up to '+m.S+' yet. Check the shaking boxes!');
+      lose(currentLang === 'en' ? 'Some lines don\'t add up to '+m.S+' yet. Check the shaking boxes!' : 'ചില വരികളുടെ തുക '+m.S+' ആയിട്ടില്ല. കുലുങ്ങുന്ന പെട്ടികൾ പരിശോധിക്കൂ!');
     }
   });
   hint.addEventListener('click',()=>{
@@ -595,77 +596,111 @@ function fitsSquares(t){const m=Math.round(Math.sqrt(t[0]));if(m*m!==t[0])return
   return (m+t.length)*(m+t.length);}
 function genSequence(level){
   for(let tries=0;tries<60;tries++){
-    let terms,ruleTxt;
+    let terms,ruleTxt,ruleTxtMl;
     if(level==='lp'){
       const kind=choice(['arith','arith','geo']);
       if(kind==='arith'){const s=rint(1,6),d=rint(1,4);
-        terms=[0,1,2,3,4].map(i=>s+i*d);ruleTxt='add '+d+' each time';}
+        terms=[0,1,2,3,4].map(i=>s+i*d);
+        ruleTxt='add '+d+' each time';
+        ruleTxtMl='ഓരോ തവണയും '+d+' വീതം കൂട്ടുക';}
       else{const s=rint(1,3),r=2;
-        terms=[0,1,2,3,4].map(i=>s*Math.pow(r,i));ruleTxt='multiply by '+r+' each time';}
+        terms=[0,1,2,3,4].map(i=>s*Math.pow(r,i));
+        ruleTxt='multiply by '+r+' each time';
+        ruleTxtMl='ഓരോ തവണയും '+r+' വീതം ഗുണിക്കുക';}
     }else{
       const kind=choice(['arith','geo','sq']);
       if(kind==='arith'){const s=rint(3,20),d=rint(4,12);
-        terms=[0,1,2,3,4].map(i=>s+i*d);ruleTxt='add '+d+' each time';}
+        terms=[0,1,2,3,4].map(i=>s+i*d);
+        ruleTxt='add '+d+' each time';
+        ruleTxtMl='ഓരോ തവണയും '+d+' വീതം കൂട്ടുക';}
       else if(kind==='geo'){const s=rint(2,5),r=choice([2,3]);
-        terms=[0,1,2,3,4].map(i=>s*Math.pow(r,i));ruleTxt='multiply by '+r+' each time';}
+        terms=[0,1,2,3,4].map(i=>s*Math.pow(r,i));
+        ruleTxt='multiply by '+r+' each time';
+        ruleTxtMl='ഓരോ തവണയും '+r+' വീതം ഗുണിക്കുക';}
       else{const m=rint(1,5);
-        terms=[0,1,2,3,4].map(i=>(m+i)*(m+i));ruleTxt='square numbers ('+m+'², '+(m+1)+'², …)';}
+        terms=[0,1,2,3,4].map(i=>(m+i)*(m+i));
+        ruleTxt='square numbers ('+m+'², '+(m+1)+'², …)';
+        ruleTxtMl='വർഗ്ഗ സംഖ്യകൾ ('+m+'², '+(m+1)+'², …)';}
     }
     const vis=terms.slice(0,4),ans=terms[4];
     const nexts=new Set();
     for(const f of [fitsArith,fitsGeo,fitsSquares]){const nx=f(vis);if(nx!==null)nexts.add(nx);}
-    if(nexts.size===1&&nexts.has(ans)&&ans<=1000)return{vis,ans,ruleTxt};
+    if(nexts.size===1&&nexts.has(ans)&&ans<=1000)return{vis,ans,ruleTxt,ruleTxtMl};
   }
-  return {vis:[2,4,6,8],ans:10,ruleTxt:'add 2 each time'};
+  return {vis:[2,4,6,8],ans:10,ruleTxt:'add 2 each time',ruleTxtMl:'ഓരോ തവണയും 2 വീതം കൂട്ടുക'};
 }
 function seqPuzzle(level){return{
   id:'seq-'+level,emoji:'🔢',name:'What Comes Next?',
-  desc:'Find the pattern and the missing number',
-  how:'<p>Look at the numbers. They follow a <b>secret pattern</b>! 🕵️</p>'+
-      '<p>Find the pattern, then type the <b>next number</b> in the box.</p>'+
-      '<div class="ex">Example: 2, 4, 6, 8, <u>?</u> → the pattern is +2, so the answer is <b>10</b>!</div>',
+  desc:{
+    en:'Find the pattern and the missing number',
+    ml:'ശ്രേണിയിലെ ക്രമം കണ്ടെത്തി വിട്ടുപോയ സംഖ്യ എഴുതുക'
+  },
+  how:{
+    en:'<p>Look at the numbers. They follow a <b>secret pattern</b>! 🕵️</p>'+
+        '<p>Find the pattern, then type the <b>next number</b> in the box.</p>'+
+        '<div class="ex">Example: 2, 4, 6, 8, <u>?</u> → the pattern is +2, so the answer is <b>10</b>!</div>',
+    ml:'<p>സംഖ്യകൾ ശ്രദ്ധിക്കുക. അവ ഒരു <b>രഹസ്യ ക്രമത്തിലാണ് (ശ്രേണിയിൽ)</b> ക്രമീകരിച്ചിരിക്കുന്നത്! 🕵️</p>'+
+        '<p>ആ ക്രമം കണ്ടെത്തി, അടുത്ത പെട്ടിയിൽ വരാവുന്ന <b>അടുത്ത സംഖ്യ</b> എഴുതുക.</p>'+
+        '<div class="ex">ഉദാഹരണത്തിന്: 2, 4, 6, 8, <u>?</u> → ഇവിടെ വരുന്ന ക്രമം +2 ആണ്, അതിനാൽ ഉത്തരം <b>10</b> ആണ്!</div>'
+  },
   mount(area){
     const q=genSequence(level);
-    area.appendChild(el('p','pz-goal','What number comes next? 🤔'));
+    area.appendChild(el('p','pz-goal', currentLang === 'en' ? 'What number comes next? 🤔' : 'അടുത്ത സംഖ്യ ഏതാണെന്ന് കണ്ടെത്താമോ? 🤔'));
     const row=el('div','seq-row');
     q.vis.forEach(v=>row.appendChild(el('div','cell fixed',v)));
     const inp=numInput(4);row.appendChild(inp);
     area.appendChild(row);
     const act=el('div','pz-actions');
-    const check=el('button','btn primary','Check ✓');
-    const hint=el('button','btn warn small','💡 Hint');
+    const check=checkBtn();
+    const hint=hintBtn();
     act.append(check,hint);area.appendChild(act);
     check.addEventListener('click',()=>{
       const v=readInt(inp);
-      if(v===null){markBad(inp);lose('Type a number first! ✏️');return;}
-      if(v===q.ans){markGood(inp);win('Yes! The pattern was: '+q.ruleTxt+'. 🌟');}
-      else{markBad(inp);lose('Not quite. Look how much the numbers grow each step! 👀');}
+      if(v===null){markBad(inp);lose(currentLang === 'en' ? 'Type a number first! ✏️' : 'ആദ്യം ഉത്തരം എഴുതുക! ✏️');return;}
+      if(v===q.ans){markGood(inp);win(currentLang === 'en' ? 'Yes! The pattern was: '+q.ruleTxt+'. 🌟' : 'Wow! ശരിയാണ്! ഇതിന്റെ ക്രമം: '+q.ruleTxtMl+'. 🌟');}
+      else{markBad(inp);lose(currentLang === 'en' ? 'Not quite. Look how much the numbers grow each step! 👀' : 'തെറ്റാണ്. സംഖ്യകൾ എത്ര വീതമാണ് കൂടുന്നതെന്ന് നോക്കൂ! 👀');}
     });
     hint.addEventListener('click',()=>{
-      showBanner('lose','💡 Hint: '+q.ruleTxt+'!');hint.disabled=true;});
+      showBanner('lose', currentLang === 'en' ? '💡 Hint: '+q.ruleTxt+'!' : '💡 സൂചന: '+q.ruleTxtMl+'!');hint.disabled=true;});
   }
 };}
 
 /* 2. Magic Square (easy) */
 function magicPuzzleLP(){return{
   id:'magic-lp',emoji:'🪄',name:'Magic Square',
-  desc:'Make every line add up to the magic number',
-  how:'<p>This is a <b>magic box</b>! 🪄 Every line must add up to the <b>same magic number</b> — across ➡️, down ⬇️ and corner-to-corner ↘️.</p>'+
-      '<p>Some numbers ran away! Type them back in the yellow boxes.</p>'+
-      '<div class="ex">If a row shows 4 + ? + 8 and the magic number is 15, then ? = 15 − 4 − 8 = <b>3</b></div>',
+  desc:{
+    en:'Make every line add up to the magic number',
+    ml:'എല്ലാ വരികളുടെയും നിരകളുടെയും തുക മാജിക് സംഖ്യയാക്കുക'
+  },
+  how:{
+    en:'<p>This is a <b>magic box</b>! 🪄 Every line must add up to the <b>same magic number</b> — across ➡️, down ⬇️ and corner-to-corner ↘️.</p>'+
+        '<p>Some numbers ran away! Type them back in the yellow boxes.</p>'+
+        '<div class="ex">If a row shows 4 + ? + 8 and the magic number is 15, then ? = 15 − 4 − 8 = <b>3</b></div>',
+    ml:'<p>ഇതൊരു <b>മാജിക് പെട്ടിയാണ്</b>! 🪄 ഇടത്തുനിന്ന് വലത്തോട്ടും ➡️, മുകളിൽ നിന്ന് താഴോട്ടും ⬇️, കോണോടുകോണും ↘️ കൂട്ടിയാൽ <b>ഒരേ മാജിക് സംഖ്യ</b> കിട്ടണം.</p>'+
+        '<p>വിട്ടുപോയ സംഖ്യകൾ മഞ്ഞ പെട്ടികളിൽ എഴുതുക.</p>'+
+        '<div class="ex">ഉദാഹരണത്തിന്: ഒരു വരിയിൽ 4 + ? + 8 ഉണ്ടെന്നും മാജിക് സംഖ്യ 15 ആണെന്നും കരുതുക. അപ്പോൾ ? = 15 − 4 − 8 = <b>3</b> ആയിരിക്കും!</div>'
+  },
   mount(area){mountMagic(area,{n:3,a:()=>1,b:()=>0,blanks:()=>rint(2,3)});}
 };}
 
 /* 3. Balance the Scale */
 function balancePuzzle(){return{
   id:'balance',emoji:'⚖️',name:'Balance the Scale',
-  desc:'Find the weight that makes both sides equal',
-  how:'<p>The scale must be <b>balanced</b> ⚖️ — both sides need the <b>same total</b>.</p>'+
-      '<p>Add the weights on each side. What number makes them equal? Type it in the box!</p>'+
-      '<div class="ex">Left: 3 + 4 = 7. Right: 5 + ? . So ? = <b>2</b>!</div>',
+  desc:{
+    en:'Find the weight that makes both sides equal',
+    ml:'ഇരുവശങ്ങളും തുല്യമാക്കുന്ന ഭാരം കണ്ടെത്തുക'
+  },
+  how:{
+    en:'<p>The scale must be <b>balanced</b> ⚖️ — both sides need the <b>same total</b>.</p>'+
+        '<p>Add the weights on each side. What number makes them equal? Type it in the box!</p>'+
+        '<div class="ex">Left: 3 + 4 = 7. Right: 5 + ? . So ? = <b>2</b>!</div>',
+    ml:'<p>ത്രാസ്സ് <b>തുല്യ നിലയിലാകണം</b> ⚖️ — ഇരുവശങ്ങളിലെയും ഭാരത്തിന്റെ തുക തുല്യമായിരിക്കണം.</p>'+
+        '<p>ഇരുവശത്തുമുള്ള ഭാരങ്ങൾ കൂട്ടുക. അവ തുല്യമാക്കാൻ ഏത് സംഖ്യ വേണം? പെട്ടിയിൽ എഴുതുക!</p>'+
+        '<div class="ex">ഉദാഹരണത്തിന്: ഇടതുവശം: 3 + 4 = 7. വലതുവശം: 5 + ? . അപ്പോൾ ? = <b>2</b>!</div>'
+  },
   mount(area){
     const a=rint(2,6),b=rint(2,6),c=rint(1,a+b-1),ans=a+b-c;
-    area.appendChild(el('p','pz-goal','Make both sides equal! ⚖️'));
+    area.appendChild(el('p','pz-goal', currentLang === 'en' ? 'Make both sides equal! ⚖️' : 'ഇരുവശങ്ങളും തുല്യമാക്കിയാലോ? ⚖️'));
     const sc=el('div','scale');
     const left=el('div','pan');
     left.append(el('span','wt','📦 '+a),el('span','wt','📦 '+b));
@@ -676,13 +711,13 @@ function balancePuzzle(){return{
     right.appendChild(inp);
     sc.append(left,mid,right);area.appendChild(sc);
     const act=el('div','pz-actions');
-    const check=el('button','btn primary','Check ✓');
+    const check=checkBtn();
     act.append(check);area.appendChild(act);
     check.addEventListener('click',()=>{
       const v=readInt(inp);
-      if(v===null){markBad(inp);lose('Type the missing weight! ✏️');return;}
-      if(v===ans){markGood(inp);win('Balanced! '+a+' + '+b+' = '+c+' + '+ans+' ⚖️');}
-      else{markBad(inp);lose('The sides are not equal yet. Add the left side first! 🤓');}
+      if(v===null){markBad(inp);lose(currentLang === 'en' ? 'Type the missing weight! ✏️' : 'വിട്ടുപോയ ഭാരം എഴുതുക! ✏️');return;}
+      if(v===ans){markGood(inp);win(currentLang === 'en' ? 'Balanced! '+a+' + '+b+' = '+c+' + '+ans+' ⚖️' : 'Super! ഇരുവശവും തുല്യമായി: '+a+' + '+b+' = '+c+' + '+ans+' ⚖️');}
+      else{markBad(inp);lose(currentLang === 'en' ? 'The sides are not equal yet. Add the left side first! 🤓' : 'ഇരുവശവും തുല്യമായിട്ടില്ല. ഇടതുവശം ആദ്യം കൂട്ടി നോക്കൂ! 🤓');}
     });
   }
 };}
@@ -690,20 +725,30 @@ function balancePuzzle(){return{
 /* 4. Speedy Sums */
 function quickPuzzle(){return{
   id:'quick',emoji:'⚡',name:'Speedy Sums',
-  desc:'Solve 5 quick sums to win a star',
-  how:'<p>Answer <b>5 sums</b> in a row to win a star! ⚡</p>'+
-      '<p>Type your answer and press <b>Check</b>. A new sum appears each time.</p>'+
-      '<div class="ex">Example: 7 + 5 = <b>12</b></div>',
+  desc:{
+    en:'Solve 5 quick sums to win a star',
+    ml:'സ്റ്റാർ നേടാനായി 5 കണക്കുകൾ വേഗത്തിൽ ചെയ്യുക'
+  },
+  how:{
+    en:'<p>Answer <b>5 sums</b> in a row to win a star! ⚡</p>'+
+        '<p>Type your answer and press <b>Check</b>. A new sum appears each time.</p>'+
+        '<div class="ex">Example: 7 + 5 = <b>12</b></div>',
+    ml:'<p>തുടർച്ചയായി <b>5 കണക്കുകൾക്ക്</b> ശരിയുത്തരം നൽകി സ്റ്റാർ നേടൂ! ⚡</p>'+
+        '<p>പെട്ടിയിൽ ഉത്തരം എഴുതിയ ശേഷം <b>Check</b> അമർത്തുക. ഓരോ തവണയും പുതിയ ചോദ്യം വരും.</p>'+
+        '<div class="ex">ഉദാഹരണം: 7 + 5 = <b>12</b></div>'
+  },
   mount(area){
     let solved=0;
+    const titleGoal=el('p','pz-goal', currentLang === 'en' ? 'Solve 5 quick sums! ⚡' : 'വേഗത്തിൽ കണക്കുകൾ ചെയ്തു നോക്കാം! ⚡');
     const goal=el('p','pz-goal','');
+    goal.style.fontSize='1rem';goal.style.marginTop='-8px';
     const row=el('div','seq-row');
     const q=el('div','cell fixed');q.style.width='auto';q.style.padding='0 16px';
     const inp=numInput(3);
     row.append(q,inp);
-    area.append(goal,row);
+    area.append(titleGoal,goal,row);
     const act=el('div','pz-actions');
-    const check=el('button','btn primary','Check ✓');
+    const check=checkBtn();
     act.append(check);area.appendChild(act);
     let ans;
     function next(){
@@ -712,16 +757,19 @@ function quickPuzzle(){return{
       if(add){ans=a+b;q.textContent=a+' + '+b+' =';}
       else{if(b>a)[a,b]=[b,a];ans=a-b;q.textContent=a+' − '+b+' =';}
       inp.value='';inp.focus();
-      goal.innerHTML='Solved: <span class="big">'+solved+' / 5</span> '+'⭐'.repeat(solved);
+      goal.innerHTML=currentLang === 'en' ? 'Solved: <span class="big">'+solved+' / 5</span> '+'⭐'.repeat(solved) : 'ശരിയാക്കിയവ: <span class="big">'+solved+' / 5</span> '+'⭐'.repeat(solved);
     }
     check.addEventListener('click',()=>{
       const v=readInt(inp);
       if(v===null){markBad(inp);return;}
       if(v===ans){
         solved++;
-        if(solved>=5){win('5 in a row — you are speedy! ⚡');goal.innerHTML='Solved: <span class="big">5 / 5</span> ⭐⭐⭐⭐⭐';}
+        if(solved>=5){
+          win(currentLang === 'en' ? '5 in a row — you are speedy! ⚡' : 'Super! തുടർച്ചയായി 5 എണ്ണം ശരിയാക്കി! ⚡');
+          goal.innerHTML=currentLang === 'en' ? 'Solved: <span class="big">5 / 5</span> ⭐⭐⭐⭐⭐' : 'ശരിയാക്കിയവ: <span class="big">5 / 5</span> ⭐⭐⭐⭐⭐';
+        }
         else{markGood(inp);setTimeout(()=>{inp.classList.remove('flash-good');next();},350);}
-      }else{markBad(inp);lose('Oops, try that sum again! 💪');}
+      }else{markBad(inp);lose(currentLang === 'en' ? 'Oops, try that sum again! 💪' : 'തെറ്റാണ്, വീണ്ടും ശ്രമിക്കൂ! 💪');}
     });
     next();
   }
@@ -758,14 +806,30 @@ const MIRROR_SHAPES=[
 ];
 function mirrorPuzzle(){return{
   id:'mirror',emoji:'🦋',name:'Mirror Magic',
-  desc:'Draw the other half of the picture',
-  how:'<p>Half a picture is drawn on the <b>left</b>. 🖼️</p>'+
-      '<p>Draw the <b>other half</b> on the right side — like a mirror! Use your finger 👆 or mouse 🖱️.</p>'+
-      '<p>Press <b>Check</b> to see your mirror score. 75% or more wins!</p>'+
-      '<div class="ex">Tip: whatever is near the middle line on the left should be near the line on the right too!</div>',
+  desc:{
+    en:'Draw the other half of the picture',
+    ml:'ചിത്രത്തിന്റെ മറ്റേ പകുതി വരയ്ക്കുക'
+  },
+  how:{
+    en:'<p>Half a picture is drawn on the <b>left</b>. 🖼️</p>'+
+        '<p>Draw the <b>other half</b> on the right side — like a mirror! Use your finger 👆 or mouse 🖱️.</p>'+
+        '<p>Press <b>Check</b> to see your mirror score. 75% or more wins!</p>'+
+        '<div class="ex">Tip: whatever is near the middle line on the left should be near the line on the right too!</div>',
+    ml:'<p>ചിത്രത്തിന്റെ ഒരു പകുതി <b>ഇടതുവശത്ത്</b> നൽകിയിട്ടുണ്ട്. 🖼️</p>'+
+        '<p>അതിന്റെ <b>മറ്റേ പകുതി</b> ഒരു കണ്ണാടിയിലെന്നപോലെ വലതുവശത്ത് വരയ്ക്കുക! വിരലോ 👆 മൗസോ 🖱️ ഉപയോഗിക്കാം.</p>'+
+        '<p><b>Check</b> അമർത്തി സ്കോർ പരിശോധിക്കുക. 75% ലോ അതിനു മുകളിലോ ലഭിച്ചാൽ ജയിക്കും!</p>'+
+        '<div class="ex">സൂചന: നടുവിലുള്ള വരയ്ക്ക് അടുത്ത് വരുന്ന ഭാഗങ്ങൾ വലതുവശത്തും വരയോട് ചേർന്ന് തന്നെ വരണം!</div>'
+  },
   mount(area){
     const shape=choice(MIRROR_SHAPES);
-    const goalText = el('p','pz-goal','Draw the mirror half of the '+shape.name);
+    const emoji=shape.name.split(' ').pop();
+    const goalText = el('p','pz-goal','');
+    function updateGoal(){
+      goalText.innerHTML = currentLang === 'en' ? 
+        'Draw the mirror half of the '+shape.name : 
+        'ഈ രൂപത്തിന്റെ മറ്റേ പകുതി വരച്ചാലോ? '+emoji;
+    }
+    updateGoal();
     area.appendChild(goalText);
     const {c,ctx,w,h}=setupCanvas(area,0.75);
     if(!ctx)return;
@@ -778,11 +842,11 @@ function mirrorPuzzle(){return{
 
     let warnTimer=null;
     function showLeftWarning(){
-      goalText.innerHTML='<span style="color:var(--red)">Draw on the right side of the dotted line! 👉</span>';
+      goalText.innerHTML=currentLang === 'en' ? 
+        '<span style="color:var(--red)">Draw on the right side of the dotted line! 👉</span>' : 
+        '<span style="color:var(--red)">ഡോട്ടഡ് വരയുടെ വലതുവശത്ത് വരയ്ക്കുക! 👉</span>';
       clearTimeout(warnTimer);
-      warnTimer=setTimeout(()=>{
-        goalText.innerHTML='Draw the mirror half of the '+shape.name;
-      },1800);
+      warnTimer=setTimeout(updateGoal,1800);
     }
 
     function redraw(showGhost){
@@ -798,8 +862,13 @@ function mirrorPuzzle(){return{
         ctx.fillStyle='#A6ADC2';
         ctx.font='700 15px "Nunito",sans-serif';
         ctx.textAlign='center';
-        ctx.fillText('Draw your mirror', mid + (w - mid)/2, h/2 - 10);
-        ctx.fillText('reflection here 👉', mid + (w - mid)/2, h/2 + 12);
+        if(currentLang === 'en'){
+          ctx.fillText('Draw your mirror', mid + (w - mid)/2, h/2 - 10);
+          ctx.fillText('reflection here 👉', mid + (w - mid)/2, h/2 + 12);
+        } else {
+          ctx.fillText('കണ്ണാടിയിലെന്നപോലെ', mid + (w - mid)/2, h/2 - 10);
+          ctx.fillText('ഇവിടെ വരയ്ക്കുക 👉', mid + (w - mid)/2, h/2 + 12);
+        }
         ctx.restore();
       }
 
@@ -851,15 +920,15 @@ function mirrorPuzzle(){return{
     c.addEventListener('pointerup',up);c.addEventListener('pointercancel',up);
     redraw(false);
     const act=el('div','pz-actions');
-    const check=el('button','btn primary','Check ✓');
-    const clear=el('button','btn small','🧽 Clear');
-    const peek=el('button','btn warn small','💡 Peek');
+    const check=checkBtn();
+    const clear=clearBtn();
+    const peek=peekBtn();
     act.append(check,clear,peek);area.appendChild(act);
     clear.addEventListener('click',()=>{strokes=[];redraw(false);});
     peek.addEventListener('click',()=>{redraw(true);setTimeout(()=>redraw(false),1500);});
     check.addEventListener('click',()=>{
       const user=[];for(const st of strokes)for(const p of samplePoly(st,7))user.push(p);
-      if(user.length<8){lose('Draw the mirror half first! ✏️');return;}
+      if(user.length<8){lose(currentLang === 'en' ? 'Draw the mirror half first! ✏️' : 'ആദ്യം ചിത്രം വരച്ചു പൂർത്തിയാക്കൂ! ✏️');return;}
       const R=Math.max(20,w*0.05);
       let cov=0;
       for(const t of targetPts){
@@ -876,8 +945,8 @@ function mirrorPuzzle(){return{
       const score=Math.round(100*(0.65*cov/targetPts.length+0.35*prec/user.length));
       if(score>=75){
         const stars=score>=90?'⭐⭐⭐':score>=82?'⭐⭐':'⭐';
-        win('Mirror score: '+score+'% '+stars+' Beautiful!');
-      }else lose('Mirror score: '+score+'%. Almost! Press 💡 Peek to see the shape, then try again.');
+        win(currentLang === 'en' ? 'Mirror score: '+score+'% '+stars+' Beautiful!' : 'Wow! മിറർ സ്കോർ: '+score+'% '+stars+' മനോഹരമായിരിക്കുന്നു!');
+      }else lose(currentLang === 'en' ? 'Mirror score: '+score+'%. Almost! Press 💡 Peek to see the shape, then try again.' : 'മിറർ സ്കോർ: '+score+'%. ഏകദേശമായിട്ടുണ്ട്! 💡 നോക്കുക ബട്ടൺ അമർത്തി ചിത്രം കണ്ട് വീണ്ടും വരയ്ക്കൂ.');
     });
   }
 };}
@@ -891,20 +960,36 @@ PUZZLES.lp.push(seqPuzzle('lp'),magicPuzzleLP(),balancePuzzle(),quickPuzzle(),mi
 /* 1. Magic Square (harder) */
 function magicPuzzleUP(){return{
   id:'magic-up',emoji:'🪄',name:'Magic Square',
-  desc:'Bigger numbers, more missing pieces',
-  how:'<p>Every row ➡️, column ⬇️ and diagonal ↘️ must add up to the <b>same magic number</b>.</p>'+
-      '<p>Fill the empty boxes. Tip: start with a line that has only <b>one</b> empty box!</p>'+
-      '<div class="ex">If a row is 12 + ? + 18 and the magic sum is 45 → ? = 45 − 12 − 18 = <b>15</b></div>',
+  desc:{
+    en:'Bigger numbers, more missing pieces',
+    ml:'വലിയ സംഖ്യകൾ, കൂടുതൽ വിട്ടുപോയവ പൂരിപ്പിക്കുക'
+  },
+  how:{
+    en:'<p>Every row ➡️, column ⬇️ and diagonal ↘️ must add up to the <b>same magic number</b>.</p>'+
+        '<p>Fill the empty boxes. Tip: start with a line that has only <b>one</b> empty box!</p>'+
+        '<div class="ex">If a row is 12 + ? + 18 and the magic sum is 45 → ? = 45 − 12 − 18 = <b>15</b></div>',
+    ml:'<p>എല്ലാ വരികളും ➡️, നിരകളും ⬇️, കോണോടുകോണും ↘️ കൂട്ടിയാൽ തുക <b>ഒരേ മാജിക് സംഖ്യയായിരിക്കണം</b>.</p>'+
+        '<p>വിട്ടുപോയ പെട്ടികൾ പൂരിപ്പിക്കുക. സൂചന: ഒരൊറ്റ പെട്ടി മാത്രം ഒഴിവുള്ള വരിയിൽ നിന്ന് കളി തുടങ്ങൂ!</p>'+
+        '<div class="ex">ഉദാഹരണത്തിന്: വരിയിൽ 12 + ? + 18 ഉണ്ട്, മാജിക് തുക 45 ആണെങ്കിൽ → ? = 45 − 12 − 18 = <b>15</b>!</div>'
+  },
   mount(area){mountMagic(area,{n:3,a:()=>rint(1,3),b:()=>rint(0,10),blanks:()=>rint(3,4)});}
 };}
 
 /* 2. Number Cross */
 function crossPuzzle(){return{
   id:'cross',emoji:'➕',name:'Number Cross',
-  desc:'A crossword made of sums',
-  how:'<p>This is a crossword with <b>numbers</b>! Rows add <b>across</b> ➡️ and columns add <b>down</b> ⬇️.</p>'+
-      '<p>The totals are given. Find the missing numbers so every sum works.</p>'+
-      '<div class="ex">If a column shows ? + 5 = 12, then ? = <b>7</b></div>',
+  desc:{
+    en:'A crossword made of sums',
+    ml:'സംഖ്യകൾ കൊണ്ടൊരു പദപ്രശ്നം'
+  },
+  how:{
+    en:'<p>This is a crossword with <b>numbers</b>! Rows add <b>across</b> ➡️ and columns add <b>down</b> ⬇️.</p>'+
+        '<p>The totals are given. Find the missing numbers so every sum works.</p>'+
+        '<div class="ex">If a column shows ? + 5 = 12, then ? = <b>7</b></div>',
+    ml:'<p>ഇതൊരു <b>സംഖ്യാ പദപ്രശ്നമാണ്</b>! വരികൾ <b>ഇടത്തുനിന്ന് വലത്തോട്ടും</b> ➡️, നിരകൾ <b>മുകളിൽ നിന്ന് താഴോട്ടും</b> ⬇️ കൂട്ടുക.</p>'+
+        '<p>ആകെ തുക തന്നിട്ടുണ്ട്. വിട്ടുപോയ സംഖ്യകൾ കണ്ടെത്തുക.</p>'+
+        '<div class="ex">ഉദാഹരണത്തിന്: ? + 5 = 12 എന്ന് കണ്ടാൽ ? = <b>7</b> ആണ്.</div>'
+  },
   mount(area){
     /* values: 0:a 1:b 2:d 3:e ; sums c1=a+b c2=d+e g=a+d h=b+e */
     let a,b,d,e2;
@@ -915,7 +1000,7 @@ function crossPuzzle(){return{
       {cells:[0,2],sum:a+d},{cells:[1,3],sum:b+e2}
     ];
     const puzzle=carve(full,lines,3);
-    area.appendChild(el('p','pz-goal','Make every ➡️ and ⬇️ sum correct!'));
+    area.appendChild(el('p','pz-goal', currentLang === 'en' ? 'Make every ➡️ and ⬇️ sum correct!' : 'ഈ സംഖ്യാ പസിൽ പൂർത്തിയാക്കിയാലോ? ➕'));
     const grid=el('div','grid-sq');
     grid.style.gridTemplateColumns='repeat(5,auto)';
     const inputs=[];
@@ -932,19 +1017,19 @@ function crossPuzzle(){return{
     grid.append(sumCell(a+d),op(''),sumCell(b+e2),op(''),op(''));
     area.appendChild(grid);
     const act=el('div','pz-actions');
-    const check=el('button','btn primary','Check ✓');
-    const hint=el('button','btn warn small','💡 Hint');
+    const check=checkBtn();
+    const hint=hintBtn();
     act.append(check,hint);area.appendChild(act);
     check.addEventListener('click',()=>{
       const vals=puzzle.slice();let empty=false;
       for(const {i,inp} of inputs){const v=readInt(inp);if(v===null){empty=true;markBad(inp);}vals[i]=v;}
-      if(empty){lose('Fill every yellow box first! ✏️');return;}
+      if(empty){lose(currentLang === 'en' ? 'Fill every yellow box first! ✏️' : 'മഞ്ഞ പെട്ടികൾ ആദ്യം പൂരിപ്പിക്കുക! ✏️');return;}
       let ok=true;
       for(const L of lines)if(L.cells.reduce((x,i)=>x+vals[i],0)!==L.sum)ok=false;
-      if(ok){inputs.forEach(o=>markGood(o.inp));win('Perfect! Every sum works! ➕');}
+      if(ok){inputs.forEach(o=>markGood(o.inp));win(currentLang === 'en' ? 'Perfect! Every sum works! ➕' : 'Super! എല്ലാ കണക്കുകളും ശരിയായി! ➕');}
       else{
         for(const {i,inp} of inputs)if(vals[i]!==full[i])markBad(inp);
-        lose('Some sums don\'t match. Check the shaking boxes! 🔎');
+        lose(currentLang === 'en' ? 'Some sums don\'t match. Check the shaking boxes! 🔎' : 'ചില കൂട്ടലുകൾ ശരിയായിട്ടില്ല. കുലുങ്ങുന്ന പെട്ടികൾ പരിശോധിക്കൂ! 🔎');
       }
     });
     hint.addEventListener('click',()=>{
@@ -958,10 +1043,18 @@ function crossPuzzle(){return{
 /* 3. Broken Calculator */
 function calcPuzzle(){return{
   id:'calc',emoji:'🔧',name:'Broken Calculator',
-  desc:'Reach the target with only a few buttons',
-  how:'<p>Oh no, this calculator is <b>broken</b>! 🔧 Only a few buttons still work.</p>'+
-      '<p>Press the working buttons to reach the <b>target number</b>. It calculates step by step, left to right.</p>'+
-      '<div class="ex">Target 16 with only 3, 5, + and × ? Try: 3 + 5 = 8 … hmm… 5 × 3 + … play and find a way!</div>',
+  desc:{
+    en:'Reach the target with only a few buttons',
+    ml:'ചില ബട്ടണുകൾ മാത്രം ഉപയോഗിച്ച് ലക്ഷ്യത്തിലെത്തുക'
+  },
+  how:{
+    en:'<p>Oh no, this calculator is <b>broken</b>! 🔧 Only a few buttons still work.</p>'+
+        '<p>Press the working buttons to reach the <b>target number</b>. It calculates step by step, left to right.</p>'+
+        '<div class="ex">Target 16 with only 3, 5, + and × ? Try: 3 + 5 = 8 … hmm… 5 × 3 + … play and find a way!</div>',
+    ml:'<p>അയ്യോ! ഈ കാൽക്കുലേറ്റർ <b>കേടാണ്</b>! 🔧 ചില ബട്ടണുകൾ മാത്രമേ പ്രവർത്തിക്കുന്നുള്ളൂ.</p>'+
+        '<p>പ്രവർത്തിക്കുന്ന ബട്ടണുകൾ മാത്രം ഉപയോഗിച്ച് <b>ലക്ഷ്യ സംഖ്യയിലെത്തുക</b>. ഇടത്തുനിന്ന് വലത്തോട്ട് ഓരോന്നായി കണക്കുകൂട്ടും.</p>'+
+        '<div class="ex">ഉദാഹരണത്തിന്: 3, 5, +, × എന്നിവ മാത്രം ഉപയോഗിച്ച് 16 ലേക്ക് എങ്ങനെയെത്താം? നോക്കൂ: 3 + 5 = 8 ... ശേഷം 8 × 2... ശരിയായ വഴി കണ്ടെത്തുക!</div>'
+  },
   mount(area){
     /* build a reachable target by simulating presses */
     let digits,ops,target;
@@ -977,7 +1070,7 @@ function calcPuzzle(){return{
       if(v>9&&v<=150&&v!==digits[0]&&v!==digits[1]){target=v;break;}
     }
     if(target===undefined)target=digits[0]+digits[1];
-    area.appendChild(el('p','pz-goal','Reach the target: <span class="big">'+target+'</span> 🎯'));
+    area.appendChild(el('p','pz-goal', currentLang === 'en' ? 'Reach the target: <span class="big">'+target+'</span> 🎯' : 'നമുക്ക് ഈ ലക്ഷ്യത്തിലെത്താമോ? <span class="big">'+target+'</span> 🎯'));
     const calc=el('div','calc');
     const disp=el('div','disp','0');
     calc.appendChild(disp);
@@ -994,7 +1087,7 @@ function calcPuzzle(){return{
     }
     function checkWin(){
       const v=entry!==''?parseInt(entry,10):acc;
-      if(v===target){disp.classList.add('flash-good');win('You fixed it! You reached '+target+'! 🔧🎉');}
+      if(v===target){disp.classList.add('flash-good');win(currentLang === 'en' ? 'You fixed it! You reached '+target+'! 🔧🎉' : 'Wow! পরিഹരിച്ചു! ലക്ഷ്യമായ '+target+' ലെത്തി! 🔧🎉');}
     }
     const layout=['7','8','9','÷','4','5','6','×','1','2','3','−','C','0','=','+'];
     for(const k of layout){
@@ -1011,7 +1104,9 @@ function calcPuzzle(){return{
       });
       keys.appendChild(btn);
     }
-    const note=el('p','','Working buttons: <b>'+digits.join(', ')+'</b> and <b>'+ops.join(' , ')+'</b> (C and = always work).');
+    const noteTextEn = 'Working buttons: <b>'+digits.join(', ')+'</b> and <b>'+ops.join(' , ')+'</b> (C and = always work).';
+    const noteTextMl = 'പ്രവർത്തിക്കുന്ന ബട്ടണുകൾ: <b>'+digits.join(', ')+'</b>, <b>'+ops.join(' , ')+'</b> (C-യും =-ഉം എപ്പോഴും പ്രവർത്തിക്കും).';
+    const note=el('p','', currentLang === 'en' ? noteTextEn : noteTextMl);
     note.style.textAlign='center';note.style.fontWeight='700';note.style.color='#4a5878';
     area.appendChild(note);
   }
@@ -1020,10 +1115,18 @@ function calcPuzzle(){return{
 /* 4. Fraction Face-Off */
 function fracPuzzle(){return{
   id:'frac',emoji:'🍕',name:'Fraction Face-Off',
-  desc:'Which fraction is bigger?',
-  how:'<p>Two fractions walk in… which one is <b>bigger</b>? 🍕</p>'+
-      '<p>Tap <b>&lt;</b> , <b>=</b> or <b>&gt;</b>. Careful — sometimes they are secretly <b>equal</b>!</p>'+
-      '<div class="ex">Tip: 1/2 = 2/4 = 3/6 … same pizza, different slices!</div>',
+  desc:{
+    en:'Which fraction is bigger?',
+    ml:'ഏത് ഭിന്നസംഖ്യയാണ് വലുത്?'
+  },
+  how:{
+    en:'<p>Two fractions walk in… which one is <b>bigger</b>? 🍕</p>'+
+        '<p>Tap <b>&lt;</b> , <b>=</b> or <b>&gt;</b>. Careful — sometimes they are secretly <b>equal</b>!</p>'+
+        '<div class="ex">Tip: 1/2 = 2/4 = 3/6 … same pizza, different slices!</div>',
+    ml:'<p>രണ്ട് ഭിന്നസംഖ്യകൾ... ഇതിൽ <b>ഏതാണ് വലുത്</b>? 🍕</p>'+
+        '<p>ശരിയായ ചിഹ്നം <b>&lt;</b>, <b>=</b>, <b>&gt;</b> തിരഞ്ഞെടുക്കുക. ശ്രദ്ധിക്കുക — ചിലപ്പോൾ രണ്ടും <b>തുല്യമായിരിക്കാം</b>!</p>'+
+        '<div class="ex">സൂചന: 1/2 = 2/4 = 3/6 ... ഒരേ അളവിലുള്ള കഷണങ്ങൾ വ്യത്യസ്ത രീതിയിൽ മുറിച്ചതാണ്!</div>'
+  },
   mount(area){
     let n1,d1,n2,d2;
     if(Math.random()<.35){ /* equal pair */
@@ -1037,7 +1140,7 @@ function fracPuzzle(){return{
       while(n1>=d1||n2>=d2||n1*d2===n2*d1);
     }
     const rel=n1*d2<n2*d1?'<':(n1*d2>n2*d1?'>':'=');
-    area.appendChild(el('p','pz-goal','Which sign goes in the middle?'));
+    area.appendChild(el('p','pz-goal', currentLang === 'en' ? 'Which sign goes in the middle?' : 'ഇതിൽ ഏതാണ് വലുതെന്ന് കണ്ടെത്താമോ? 🍕'));
     const fr=el('div','frac');
     const f1=el('div','f','<span>'+n1+'</span><span class="bar"></span><span>'+d1+'</span>');
     const mid=el('div','cell fixed','?');mid.style.background='#FFF9E8';
@@ -1058,8 +1161,8 @@ function fracPuzzle(){return{
         b2.firstChild.style.width=Math.min(100,100*n2/d2)+'%';
         if(sym===rel){
           done=true;mid.textContent=rel;markGood(mid);
-          win('Yes! '+n1+'/'+d1+' '+rel+' '+n2+'/'+d2+' — see the bars! 🍕');
-        }else{markBad(mid);lose('Look at the green and purple bars — which is longer? 👀');}
+          win(currentLang === 'en' ? 'Yes! '+n1+'/'+d1+' '+rel+' '+n2+'/'+d2+' — see the bars! 🍕' : 'Super! '+n1+'/'+d1+' '+rel+' '+n2+'/'+d2+' — ഭിന്നസംഖ്യാ വരകൾ നോക്കൂ! 🍕');
+        }else{markBad(mid);lose(currentLang === 'en' ? 'Look at the green and purple bars — which is longer? 👀' : 'പച്ച, പർപ്പിൾ നിറത്തിലുള്ള വരകൾ നോക്കൂ — ഏതാണ് കൂടുതൽ നീളമുള്ളത്? 👀');}
       });
       row.appendChild(b);
     }
@@ -1070,28 +1173,40 @@ function fracPuzzle(){return{
 /* 5. Dot-to-Dot Detective */
 function dotsPuzzle(){return{
   id:'dots',emoji:'🔴',name:'Dot-to-Dot Detective',
-  desc:'Tap the right numbers in the right order',
-  how:'<p>Some dots follow the <b>rule</b>, some are tricksters! 🕵️</p>'+
-      '<p>Tap only the dots that follow the rule, from <b>smallest to biggest</b>. Lines will connect them!</p>'+
-      '<div class="ex">Rule: multiples of 4 → tap 4, then 8, then 12 … skip the rest!</div>',
+  desc:{
+    en:'Tap the right numbers in the right order',
+    ml:'ശരിയായ ക്രമത്തിൽ സംഖ്യകൾ തിരഞ്ഞെടുക്കുക'
+  },
+  how:{
+    en:'<p>Some dots follow the <b>rule</b>, some are tricksters! 🕵️</p>'+
+        '<p>Tap only the dots that follow the rule, from <b>smallest to biggest</b>. Lines will connect them!</p>'+
+        '<div class="ex">Rule: multiples of 4 → tap 4, then 8, then 12 … skip the rest!</div>',
+    ml:'<p>ചില ബിന്ദുക്കൾ തന്നിരിക്കുന്ന <b>നിയമം</b> പാലിക്കുന്നവയാണ്, ചിലവ വഴിതെറ്റിക്കുന്നവയുമാണ്! 🕵️</p>'+
+        '<p>ശരിയായവ മാത്രം <b>ചെറുതിൽ നിന്ന് വലുതിലേക്ക്</b> എന്ന ക്രമത്തിൽ തൊടുക. ഒരു വര വഴി അവ ബന്ധിക്കപ്പെടും!</p>'+
+        '<div class="ex">നിയമം: 4-ന്റെ ഗുണിതങ്ങൾ → ആദ്യം 4, പിന്നീട് 8, അതിനുശേഷം 12 ... മറ്റുള്ളവ ഒഴിവാക്കുക!</div>'
+  },
   mount(area){
     const kind=choice(['mult','mult','prime']);
-    let ruleTxt,good=[],decoys=[];
+    let ruleTxt,ruleTxtMl,good=[],decoys=[];
     if(kind==='mult'){
       const k=choice([3,4,6,7]);
       ruleTxt='multiples of '+k;
+      ruleTxtMl=k+'-ന്റെ ഗുണിതങ്ങൾ';
       const ms=shuffle([1,2,3,4,5,6,7,8,9].map(m=>m*k)).slice(0,5).sort((a,b)=>a-b);
       good=ms;
       while(decoys.length<5){const v=rint(2,k*9);
         if(v%k!==0&&!decoys.includes(v))decoys.push(v);}
     }else{
       ruleTxt='prime numbers';
+      ruleTxtMl='അഭാജ്യ സംഖ്യകൾ';
       const primes=[2,3,5,7,11,13,17,19,23,29,31,37];
       good=shuffle(primes).slice(0,5).sort((a,b)=>a-b);
       const comps=[1,4,6,8,9,10,12,14,15,16,18,20,21,22,24,25,27,33,35];
       decoys=shuffle(comps.filter(v=>!good.includes(v))).slice(0,5);
     }
-    area.appendChild(el('p','pz-goal','Tap the <span class="big">'+ruleTxt+'</span>, smallest first!'));
+    const goalEn = 'Tap the <span class="big">'+ruleTxt+'</span>, smallest first!';
+    const goalMl = '<span class="big">'+ruleTxtMl+'</span> ചെറുതിൽ നിന്ന് വലുതിലേക്ക് തിരഞ്ഞെടുക്കാമോ? 🔎';
+    area.appendChild(el('p','pz-goal', currentLang === 'en' ? goalEn : goalMl));
     const W=Math.min(area.clientWidth-4,480)||320,H=300;
     const wrap=el('div','dots-wrap');
     wrap.style.width=W+'px';wrap.style.height=H+'px';
@@ -1124,11 +1239,11 @@ function dotsPuzzle(){return{
             svg.appendChild(ln);
           }
           prev=p;idx++;
-          if(idx>=good.length)win('Case closed, detective! You found all the '+ruleTxt+'! 🕵️');
+          if(idx>=good.length)win(currentLang === 'en' ? 'Case closed, detective! You found all the '+ruleTxt+'! 🕵️' : 'ശരിയാണ്! എല്ലാ '+ruleTxtMl+' കണ്ടെത്തി! 🕵️');
         }else{
           d.classList.add('no');markBad(d);
           setTimeout(()=>d.classList.remove('no'),700);
-          lose(p.v+' is not next! Remember: '+ruleTxt+', smallest first. 🔎');
+          lose(currentLang === 'en' ? p.v+' is not next! Remember: '+ruleTxt+', smallest first. 🔎' : p.v+' അടുത്തതല്ല! ഓർക്കുക: '+ruleTxtMl+', ചെറുതിൽ നിന്ന് വലുതിലേക്ക്. 🔎');
         }
       });
       wrap.appendChild(d);
@@ -1146,20 +1261,36 @@ PUZZLES.up.push(magicPuzzleUP(),crossPuzzle(),calcPuzzle(),fracPuzzle(),dotsPuzz
 /* 1. Magic Square 4×4 */
 function magicPuzzleHS(){return{
   id:'magic-hs',emoji:'🪄',name:'Magic Square 4×4',
-  desc:'The classic — now with 16 cells',
-  how:'<p>All 4 rows, all 4 columns and both diagonals must add up to the <b>same magic sum</b>.</p>'+
-      '<p>Strategy: find a line with only one empty cell, solve it, repeat. Pure deduction — no guessing needed.</p>'+
-      '<div class="ex">Line 16 + ? + 2 + 13 with magic sum 34 → ? = 34 − 31 = <b>3</b></div>',
+  desc:{
+    en:'The classic — now with 16 cells',
+    ml:'പരമ്പരാഗത ശൈലിയിൽ 16 പെട്ടികളുള്ള മാജിക് ചതുരം'
+  },
+  how:{
+    en:'<p>All 4 rows, all 4 columns and both diagonals must add up to the <b>same magic sum</b>.</p>'+
+        '<p>Strategy: find a line with only one empty cell, solve it, repeat. Pure deduction — no guessing needed.</p>'+
+        '<div class="ex">Line 16 + ? + 2 + 13 with magic sum 34 → ? = 34 − 31 = <b>3</b></div>',
+    ml:'<p>നാല് വരികളും, നാല് നിരകളും, രണ്ട് കോണോടുകോണുകളും കൂട്ടിയാൽ തുക <b>ഒരേ മാജിക് സംഖ്യയായിരിക്കണം</b>.</p>'+
+        '<p>തന്ത്രം: ഒരു പെട്ടി മാത്രം ഒഴിവുള്ള വരികൾ കണ്ടെത്തി പൂരിപ്പിക്കുക. ഇത്തരത്തിൽ പൂർത്തിയാക്കാം.</p>'+
+        '<div class="ex">ഉദാഹരണത്തിന്: 16 + ? + 2 + 13 വരിയുടെ മാജിക് തുക 34 ആണെങ്കിൽ → ? = 34 − 31 = <b>3</b>!</div>'
+  },
   mount(area){mountMagic(area,{n:4,a:()=>1,b:()=>rint(0,12),blanks:()=>rint(4,6)});}
 };}
 
 /* 2. Emoji Algebra */
 function emojiPuzzle(){return{
   id:'emoji',emoji:'🍎',name:'Emoji Algebra',
-  desc:'Every emoji hides a number — crack the code',
-  how:'<p>Each emoji hides a number. The <b>same emoji</b> always means the <b>same number</b>.</p>'+
-      '<p>Use the equations from top to bottom to crack the code, then answer the last line. Like solving for x — but tastier. 🍎</p>'+
-      '<div class="ex">🍎 + 🍎 = 10 → 🍎 = 5. Then 🍎 + 🍌 = 8 → 🍌 = 3.</div>',
+  desc:{
+    en:'Every emoji hides a number — crack the code',
+    ml:'ഓരോ ചിത്രവും ഓരോ സംഖ്യകളെ ഒളിപ്പിച്ചു വെച്ചിരിക്കുന്നു — അവ കണ്ടെത്തുക'
+  },
+  how:{
+    en:'<p>Each emoji hides a number. The <b>same emoji</b> always means the <b>same number</b>.</p>'+
+        '<p>Use the equations from top to bottom to crack the code, then answer the last line. Like solving for x — but tastier. 🍎</p>'+
+        '<div class="ex">🍎 + 🍎 = 10 → 🍎 = 5. Then 🍎 + 🍌 = 8 → 🍌 = 3.</div>',
+    ml:'<p>ഓരോ ചിത്രവും ഓരോ സംഖ്യയെ സൂചിപ്പിക്കുന്നു. <b>ഒരേ ചിത്രം</b> എപ്പോഴും <b>ഒരേ സംഖ്യയെത്തന്നെയായിരിക്കും</b> സൂചിപ്പിക്കുക.</p>'+
+        '<p>മുകളിൽ നിന്ന് താഴോട്ടുള്ള സമവാക്യങ്ങൾ ഉപയോഗിച്ച് ചിത്രങ്ങൾക്ക് പിന്നിലെ സംഖ്യകൾ കണ്ടെത്തി അവസാന വരി പൂരിപ്പിക്കുക. ബീജഗണിത സമവാക്യം പരിഹരിക്കുന്നതുപോലെ ലളിതമാണ്. 🍎</p>'+
+        '<div class="ex">ഉദാഹരണത്തിന്: 🍎 + 🍎 = 10 ആണെങ്കിൽ 🍎 = 5. തുടർന്ന് 🍎 + 🍌 = 8 ആണെങ്കിൽ 🍌 = 3 ആയിരിക്കും.</div>'
+  },
   mount(area){
     const ems=shuffle(['🍎','🍌','🍇','🍩','⚽','🎈','🐟','🍪']).slice(0,3);
     const x=rint(2,9);let y=rint(2,9);while(y===x)y=rint(2,9);
@@ -1178,7 +1309,7 @@ function emojiPuzzle(){return{
       rows.push([ems[0],'×',ems[1],'=',x*y]);
       ans=x+2*y;qHtml=[ems[0],'+',ems[1],'+',ems[1],'=','?'];
     }
-    area.appendChild(el('p','pz-goal','Crack the emoji code! 🔐'));
+    area.appendChild(el('p','pz-goal', currentLang === 'en' ? 'Crack the emoji code! 🔐' : 'ചിത്രങ്ങളുടെ കോഡ് നമുക്ക് പരിഹരിക്കാം! 🔐'));
     for(const r of rows){
       const line=el('div','eq');
       r.forEach(t=>line.appendChild(el('span',typeof t==='number'?'num':'',t)));
@@ -1191,27 +1322,35 @@ function emojiPuzzle(){return{
     });
     area.appendChild(qline);
     const act=el('div','pz-actions');
-    const check=el('button','btn primary','Check ✓');
-    const hint=el('button','btn warn small','💡 Hint');
+    const check=checkBtn();
+    const hint=hintBtn();
     act.append(check,hint);area.appendChild(act);
     check.addEventListener('click',()=>{
       const v=readInt(qline.inp);
-      if(v===null){markBad(qline.inp);lose('Type your answer first! ✏️');return;}
-      if(v===ans){markGood(qline.inp);win('Code cracked! '+ems[0]+'='+x+', '+ems[1]+'='+y+(three?', '+ems[2]+'='+z:'')+' 🔓');}
-      else{markBad(qline.inp);lose('Not yet. Start with the first equation — it gives away '+ems[0]+'!');}
+      if(v===null){markBad(qline.inp);lose(currentLang === 'en' ? 'Type your answer first! ✏️' : 'ആദ്യം നിങ്ങളുടെ ഉത്തരം എഴുതുക! ✏️');return;}
+      if(v===ans){markGood(qline.inp);win(currentLang === 'en' ? 'Code cracked! '+ems[0]+'='+x+', '+ems[1]+'='+y+(three?', '+ems[2]+'='+z:'')+' 🔓' : 'Super! കോഡ് ശരിയായി കണ്ടെത്തി! '+ems[0]+'='+x+', '+ems[1]+'='+y+(three?', '+ems[2]+'='+z:'')+' 🔓');}
+      else{markBad(qline.inp);lose(currentLang === 'en' ? 'Not yet. Start with the first equation — it gives away '+ems[0]+'!' : 'ആയിട്ടില്ല. ആദ്യത്തെ സമവാക്യം ആദ്യം നോക്കൂ — അത് '+ems[0]+' എത്രയെന്ന് പറഞ്ഞുതരും!');}
     });
     hint.addEventListener('click',()=>{
-      showBanner('lose','💡 Hint: '+ems[0]+' = '+x);hint.disabled=true;});
+      showBanner('lose', currentLang === 'en' ? '💡 Hint: '+ems[0]+' = '+x : '💡 സൂചന: '+ems[0]+' = '+x);hint.disabled=true;});
   }
 };}
 
 /* 3. Number Tower */
 function towerPuzzle(){return{
   id:'tower',emoji:'🗼',name:'Number Tower',
-  desc:'Each brick is the sum of the two below it',
-  how:'<p>Every brick equals the <b>sum of the two bricks directly below it</b>. 🧱</p>'+
-      '<p>Fill the empty bricks. Sometimes you must work <b>downwards</b>: below = top − other brick!</p>'+
-      '<div class="ex">If a brick is 11 and one brick below it is 4, the other one is 11 − 4 = <b>7</b></div>',
+  desc:{
+    en:'Each brick is the sum of the two below it',
+    ml:'ഓരോ കട്ടയും തൊട്ടുതാഴെയുള്ള രണ്ടെണ്ണത്തിന്റെയും തുകയാണ് 🧱'
+  },
+  how:{
+    en:'<p>Every brick equals the <b>sum of the two bricks directly below it</b>. 🧱</p>'+
+        '<p>Fill the empty bricks. Sometimes you must work <b>downwards</b>: below = top − other brick!</p>'+
+        '<div class="ex">If a brick is 11 and one brick below it is 4, the other one is 11 − 4 = <b>7</b></div>',
+    ml:'<p>ഓരോ കട്ടയും <b>തൊട്ടുതാഴെയുള്ള രണ്ടെണ്ണത്തിന്റെയും ഭാരത്തിന്റെ തുകയാണ്</b>. 🧱</p>'+
+        '<p>ഒഴിഞ്ഞ കട്ടകൾ പൂരിപ്പിക്കുക. ചിലപ്പോൾ താഴോട്ടുള്ള വഴിയിലൂടെ ചെയ്യേണ്ടി വരും: താഴെയുള്ളത് = മുകളിലുള്ളത് − മറ്റേ കട്ട!</p>'+
+        '<div class="ex">ഉദാഹരണത്തിന്: മുകളിലെ കട്ട 11-ഉം താഴെയുള്ള ഒന്നാമത്തെ കട്ട 4-ഉം ആണെങ്കിൽ, രണ്ടാമത്തെ കട്ട 11 − 4 = <b>7</b> ആയിരിക്കും!</div>'
+  },
   mount(area){
     /* rows: r0(1), r1(2), r2(3), r3(4 base). index layout flat */
     const base=[rint(1,9),rint(1,9),rint(1,9),rint(1,9)];
@@ -1242,7 +1381,7 @@ function towerPuzzle(){return{
       const t=puzzle.slice();t[i]=null;
       if(solvableT(t)){puzzle=t;blanks++;}
     }
-    area.appendChild(el('p','pz-goal','Each brick = sum of the two below 🧱'));
+    area.appendChild(el('p','pz-goal', currentLang === 'en' ? 'Each brick = sum of the two below 🧱' : 'ഓരോ കട്ടയും തൊട്ടുതാഴെയുള്ള രണ്ടെണ്ണത്തിന്റെയും തുകയാണ് 🧱'));
     const tw=el('div','tower');
     const inputs=[];
     rows.forEach((row,r)=>{
@@ -1256,19 +1395,19 @@ function towerPuzzle(){return{
     });
     area.appendChild(tw);
     const act=el('div','pz-actions');
-    const check=el('button','btn primary','Check ✓');
-    const hint=el('button','btn warn small','💡 Hint');
+    const check=checkBtn();
+    const hint=hintBtn();
     act.append(check,hint);area.appendChild(act);
     check.addEventListener('click',()=>{
       const vals=puzzle.slice();let empty=false;
       for(const {i,inp} of inputs){const v=readInt(inp);if(v===null){empty=true;markBad(inp);}vals[i]=v;}
-      if(empty){lose('Fill every yellow brick first! ✏️');return;}
+      if(empty){lose(currentLang === 'en' ? 'Fill every yellow brick first! ✏️' : 'മഞ്ഞ പെട്ടികൾ ആദ്യം പൂരിപ്പിക്കുക! ✏️');return;}
       let ok=true;
       for(const L of lines)if(vals[L.parent]!==vals[L.cells[0]]+vals[L.cells[1]])ok=false;
-      if(ok){inputs.forEach(o=>markGood(o.inp));win('Tower complete — rock solid! 🗼');}
+      if(ok){inputs.forEach(o=>markGood(o.inp));win(currentLang === 'en' ? 'Tower complete — rock solid! 🗼' : 'Super! ഗോപുരം ശരിയായി പൂർത്തിയാക്കി! 🗼');}
       else{
         for(const {i,inp} of inputs)if(vals[i]!==flat[i])markBad(inp);
-        lose('Some bricks don\'t add up. Check the shaking ones! 🧱');
+        lose(currentLang === 'en' ? 'Some bricks don\'t add up. Check the shaking ones! 🧱' : 'ചില കട്ടകളിലെ കൂട്ടലുകൾ തെറ്റാണ്. കുലുങ്ങുന്നവ പരിശോധിക്കൂ! 🧱');
       }
     });
     hint.addEventListener('click',()=>{
@@ -1282,10 +1421,18 @@ function towerPuzzle(){return{
 /* 4. Prime Path */
 function primePathPuzzle(){return{
   id:'ppath',emoji:'🐾',name:'Prime Path',
-  desc:'Cross the grid stepping only on primes',
-  how:'<p>Start at the blue cell and reach the gold cell 🏁 — but you may only step on <b>prime numbers</b>!</p>'+
-      '<p>Tap a cell next to you (up/down/left/right) to move. Composite numbers block your way.</p>'+
-      '<div class="ex">Prime = divisible only by 1 and itself: 2, 3, 5, 7, 11, 13… (careful: 1 is NOT prime!)</div>',
+  desc:{
+    en:'Cross the grid stepping only on primes',
+    ml:'അഭാജ്യ സംഖ്യകളിലൂടെ മാത്രം കടന്ന് ലക്ഷ്യസ്ഥാനത്തെത്തുക'
+  },
+  how:{
+    en:'<p>Start at the blue cell and reach the gold cell 🏁 — but you may only step on <b>prime numbers</b>!</p>'+
+        '<p>Tap a cell next to you (up/down/left/right) to move. Composite numbers block your way.</p>'+
+        '<div class="ex">Prime = divisible only by 1 and itself: 2, 3, 5, 7, 11, 13… (careful: 1 is NOT prime!)</div>',
+    ml:'<p>നീല കള്ളിയിൽ തുടങ്ങി സ്വണ്ണ കള്ളിയിൽ 🏁 എത്തുക — അഭാജ്യ സംഖ്യകളിൽ (primes) മാത്രമേ ചവിട്ടാവൂ!</p>'+
+        '<p>നീങ്ങാനായി തൊട്ടടുത്തുള്ള കള്ളിയിൽ തൊടുക. ഭാജ്യ സംഖ്യകൾ വഴി തടസ്സപ്പെടുത്തും.</p>'+
+        '<div class="ex">അഭാജ്യ സംഖ്യ = 1 കൊണ്ടും ആ സംഖ്യ കൊണ്ടും മാത്രം ഹരിക്കാവുന്നവ: 2, 3, 5, 7, 11, 13... (ശ്രദ്ധിക്കുക: 1 ഒരു അഭാജ്യ സംഖ്യയല്ല!)</div>'
+  },
   mount(area){
     const N=5;
     const primes=[2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89];
@@ -1302,7 +1449,7 @@ function primePathPuzzle(){return{
     const pShuf=shuffle(primes),cShuf=shuffle(comps);
     let pi=0,ci=0;
     for(let i=0;i<N*N;i++)grid.push(onPath.has(i)?pShuf[pi++%pShuf.length]:cShuf[ci++%cShuf.length]);
-    area.appendChild(el('p','pz-goal','Step only on <span class="big">prime numbers</span>! 🐾'));
+    area.appendChild(el('p','pz-goal', currentLang === 'en' ? 'Step only on <span class="big">prime numbers</span>! 🐾' : 'അഭാജ്യ സംഖ്യകളിലൂടെ മാത്രം ചുവടുവെച്ച് മുന്നോട്ട് പോകാം! 🐾'));
     const g=el('div','pgrid');
     const btns=[];
     let cur=0;const goal=N*N-1;
@@ -1317,18 +1464,18 @@ function primePathPuzzle(){return{
         if(!isPrime(grid[i])){
           b.classList.add('badstep');markBad(b);
           setTimeout(()=>b.classList.remove('badstep'),700);
-          lose(grid[i]+' is not prime — it\'s blocked! 🚧');
+          lose(currentLang === 'en' ? grid[i]+' is not prime — it\'s blocked! 🚧' : grid[i]+' ഒരു അഭാജ്യ സംഖ്യയല്ല — ഇവിടെ തടസ്സമുണ്ട്! 🚧');
           return;
         }
         btns[cur].classList.remove('cur');btns[cur].classList.add('vis');
         cur=i;b.classList.add('cur');
-        if(cur===goal)win('You crossed the prime path! 🏁🐾');
+        if(cur===goal)win(currentLang === 'en' ? 'You crossed the prime path! 🏁🐾' : 'Super! നിങ്ങൾ അഭാജ്യ സംഖ്യാ വഴി വിജയകരമായി കടന്നു! 🏁🐾');
       });
       btns.push(b);g.appendChild(b);
     }
     area.appendChild(g);
     const act=el('div','pz-actions');
-    const reset=el('button','btn small','↩️ Back to start');
+    const reset=resetBtn();
     act.append(reset);area.appendChild(act);
     reset.addEventListener('click',()=>{
       btns.forEach(b=>b.classList.remove('cur','vis'));
@@ -1340,13 +1487,21 @@ function primePathPuzzle(){return{
 /* 5. Angle Artist */
 function anglePuzzle(){return{
   id:'angle',emoji:'📐',name:'Angle Artist',
-  desc:'Draw an angle by eye — no protractor!',
-  how:'<p>Can you <b>feel</b> angles? A base ray is drawn. Drag from the dot to draw a second ray and make the asked angle — <b>no protractor allowed</b>! 📐</p>'+
-      '<p>Within <b>±10°</b> counts as a win. Press Check to measure.</p>'+
-      '<div class="ex">Remember: 90° = corner of a page, 180° = straight line, 45° = half a corner.</div>',
+  desc:{
+    en:'Draw an angle by eye — no protractor!',
+    ml:'ഒരു കോൺ ഏകദേശ അളവിൽ വരയ്ക്കുക — പ്രൊട്രാക്ടർ ഉപയോഗിക്കരുത്!'
+  },
+  how:{
+    en:'<p>Can you <b>feel</b> angles? A base ray is drawn. Drag from the dot to draw a second ray and make the asked angle — <b>no protractor allowed</b>! 📐</p>'+
+        '<p>Within <b>±10°</b> counts as a win. Press Check to measure.</p>'+
+        '<div class="ex">Remember: 90° = corner of a page, 180° = straight line, 45° = half a corner.</div>',
+    ml:'<p>കോണുകൾ ഏകദേശമായി മനസ്സിലാക്കാമോ? അടിവരയായി ഒരു രശ്മി (ray) നൽകിയിട്ടുണ്ട്. ബിന്ദുവിൽ നിന്ന് വലിച്ച് ആവശ്യപ്പെട്ട കോണളവ് വരയ്ക്കുക — <b>പ്രൊട്രാക്ടർ ഉപയോഗിക്കാൻ പാടില്ല</b>! 📐</p>'+
+        '<p>ശരിയായ അളവിന്റെ <b>±10°</b> പരിധിയിൽ വന്നാൽ ജയിക്കും. അളന്നു നോക്കാൻ Check ബട്ടൺ അമർത്തുക.</p>'+
+        '<div class="ex">ഓർക്കുക: 90° = ഒരു പേജിന്റെ കോൺ, 180° = നേർരേഖ, 45° = 90° യുടെ പകുതി.</div>'
+  },
   mount(area){
     const target=choice([30,45,60,90,120,135,150]);
-    area.appendChild(el('p','pz-goal','Draw an angle of <span class="big">'+target+'°</span> (±10°)'));
+    area.appendChild(el('p','pz-goal', currentLang === 'en' ? 'Draw an angle of <span class="big">'+target+'°</span> (±10°)' : 'നമുക്ക് ഒരു <span class="big">'+target+'°</span> കോൺ വരച്ചാലോ? (±10°) 📐'));
     const {c,ctx,w,h}=setupCanvas(area,0.66);
     if(!ctx)return;
     const V={x:Math.round(w*0.2),y:Math.round(h*0.72)};
@@ -1391,18 +1546,18 @@ function anglePuzzle(){return{
     c.addEventListener('pointerup',up);c.addEventListener('pointercancel',up);
     redraw(false,null);
     const act=el('div','pz-actions');
-    const check=el('button','btn primary','Check 📐');
-    const clear=el('button','btn small','🧽 Redraw');
+    const check=checkBtn();
+    const clear=redrawBtn();
     act.append(check,clear);area.appendChild(act);
     clear.addEventListener('click',()=>{ray=null;checked=false;redraw(false,null);});
     check.addEventListener('click',()=>{
       const a=angleOf();
-      if(a===null){lose('Drag from the dot to draw your ray first! ✏️');return;}
+      if(a===null){lose(currentLang === 'en' ? 'Drag from the dot to draw your ray first! ✏️' : 'രശ്മി വരയ്ക്കാനായി ബിന്ദുവിൽ നിന്ന് വലിച്ച് തുടങ്ങൂ! ✏️');return;}
       if(checked)return;checked=true;
       redraw(true,a);
       const diff=Math.abs(a-target);
-      if(diff<=10)win('You drew '+a+'° — only '+diff+'° off! Eagle eyes! 🦅');
-      else lose('You drew '+a+'° — that\'s '+diff+'° away from '+target+'°. Press 🧽 Redraw and try again!');
+      if(diff<=10)win(currentLang === 'en' ? 'You drew '+a+'° — only '+diff+'° off! Eagle eyes! 🦅' : 'Super! നിങ്ങൾ വരച്ചത് '+a+'° — വ്യത്യാസം വെറും '+diff+'° മാത്രം! 🦅');
+      else lose(currentLang === 'en' ? 'You drew '+a+'° — that\'s '+diff+'° away from '+target+'°. Press 🧽 Redraw and try again!' : 'നിങ്ങൾ വരച്ചത് '+a+'° — ഇത് '+target+'°-ൽ നിന്നും '+diff+'° വ്യത്യാസമുണ്ട്. വീണ്ടും വരയ്ക്കുക ബട്ടൺ അമർത്തി വീണ്ടും ശ്രമിക്കൂ!');
     });
   }
 };}

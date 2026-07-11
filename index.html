@@ -423,15 +423,45 @@ function carve(full,lines,wantBlanks,protectedIdx){
 }
 
 /* ================================================================
-   App shell / navigation
+   App shell / navigation / translation toggle
 ================================================================ */
+let currentLang = 'en';
+
+function toggleLanguage() {
+  currentLang = currentLang === 'en' ? 'ml' : 'en';
+  $('#btn-lang').textContent = currentLang === 'en' ? '🌐 EN' : '🌐 MAL';
+  
+  if ($('#scr-home').classList.contains('on')) {
+    renderHome();
+  } else if ($('#scr-menu').classList.contains('on')) {
+    openCat(curCat);
+  } else if ($('#scr-puzzle').classList.contains('on')) {
+    remountPuzzle();
+  }
+  updateGlobalLabels();
+}
+
+function updateGlobalLabels() {
+  $('#how-ok').textContent = currentLang === 'en' ? "Got it, let's play! 🚀" : "ശരി, കളി തുടങ്ങാം! 🚀";
+  $('#btn-new').textContent = currentLang === 'en' ? "🔄 New" : "🔄 പുതിയത്";
+  $('#banner-new').textContent = currentLang === 'en' ? "🔄 New puzzle" : "🔄 പുതിയ പസിൽ";
+  $('#scr-home .hero p').innerHTML = currentLang === 'en' ? 
+    "Pick your class and play fun math puzzles. A new puzzle every time!" : 
+    "ക്ലാസ്സ് തിരഞ്ഞെടുത്ത് ഗണിത പസിലുകൾ കളിക്കുക. ഓരോ തവണയും പുതിയ പസിലുകൾ!";
+}
+
+$('#btn-lang').addEventListener('click', toggleLanguage);
+
 const CATS=[
  {id:'lp',name:'Std 1 – 4',emoji:'🐣',color:'var(--c1)',
-  tag:'Lower Primary',desc:'Counting, adding, patterns and drawing fun!'},
+  tag:{en:'Lower Primary', ml:'ലോവർ പ്രൈമറി'},
+  desc:{en:'Counting, adding, patterns and drawing fun!', ml:'എണ്ണൽ, കൂട്ടൽ, മാതൃകകൾ, ചിത്രരചന എന്നിവ!'}},
  {id:'up',name:'Std 5 – 7',emoji:'🚀',color:'var(--c2)',
-  tag:'Upper Primary',desc:'Magic squares, fractions and calculator tricks!'},
+  tag:{en:'Upper Primary', ml:'അപ്പർ പ്രൈമറി'},
+  desc:{en:'Magic squares, fractions and calculator tricks!', ml:'മാന്ത്രിക ചതുരം, ഭിന്നസംഖ്യകൾ, കാൽക്കുലേറ്റർ എന്നിവ!'}},
  {id:'hs',name:'Std 8 – 10',emoji:'🧠',color:'var(--c3)',
-  tag:'High School',desc:'Algebra, primes, angles and brain-benders!'}
+  tag:{en:'High School', ml:'ഹൈസ്കൂൾ'},
+  desc:{en:'Algebra, primes, angles and brain-benders!', ml:'ബീജഗണിതം, അഭാജ്യസംഖ്യകൾ, കോണുകൾ വരയ്ക്കൽ!'}}
 ];
 const PUZZLES={lp:[],up:[],hs:[]};
 let curCat=null,curPz=null;
@@ -451,8 +481,10 @@ function renderHome(){
   for(const c of CATS){
     const b=el('button','cat-card');
     b.style.setProperty('--cat',c.color);
-    b.innerHTML='<span class="tab">'+c.tag+'</span>'+
-      '<h2><span class="em">'+c.emoji+'</span>'+c.name+'</h2><p>'+c.desc+'</p>';
+    const tagVal = currentLang === 'en' ? c.tag.en : c.tag.ml;
+    const descVal = currentLang === 'en' ? c.desc.en : c.desc.ml;
+    b.innerHTML='<span class="tab">'+tagVal+'</span>'+
+      '<h2><span class="em">'+c.emoji+'</span>'+c.name+'</h2><p>'+descVal+'</p>';
     b.addEventListener('click',()=>openCat(c));
     list.appendChild(b);
   }
@@ -461,12 +493,13 @@ function renderHome(){
 function openCat(c){
   curCat=c;
   $('#menu-title').textContent=c.emoji+' '+c.name;
-  $('#menu-sub').textContent='Pick a puzzle — every round is brand new!';
+  $('#menu-sub').textContent=currentLang === 'en' ? 'Pick a puzzle — every round is brand new!' : 'ഒരു പസിൽ തിരഞ്ഞെടുക്കുക — ഓരോ കളിയും പുതിയ ചോദ്യങ്ങളോടെ!';
   const list=$('#pz-list');list.innerHTML='';
   for(const p of PUZZLES[c.id]){
     const b=el('button','pz-btn');
+    const descVal = currentLang === 'en' ? p.desc.en : p.desc.ml;
     b.innerHTML='<span class="em">'+p.emoji+'</span><span><span class="t">'+p.name+
-      '</span><br><span class="d">'+p.desc+'</span></span>';
+      '</span><br><span class="d">'+descVal+'</span></span>';
     b.addEventListener('click',()=>openPuzzle(p));
     list.appendChild(b);
   }
@@ -487,7 +520,7 @@ function remountPuzzle(){
 }
 function showHow(){
   $('#how-title').innerHTML=curPz.emoji+' '+curPz.name;
-  $('#how-body').innerHTML=curPz.how;
+  $('#how-body').innerHTML=currentLang === 'en' ? curPz.how.en : curPz.how.ml;
   $('#modal-back').classList.add('on');
 }
 $('#how-ok').addEventListener('click',()=>$('#modal-back').classList.remove('on'));
@@ -498,6 +531,29 @@ $('#btn-back').addEventListener('click',()=>{
   if($('#scr-puzzle').classList.contains('on'))show('#scr-menu');
   else show('#scr-home');
 });
+
+/* Localized button helpers */
+function checkBtn() {
+  return el('button', 'btn primary', currentLang === 'en' ? 'Check ✓' : 'പരിശോധിക്കുക ✓');
+}
+function hintBtn() {
+  return el('button', 'btn warn small', currentLang === 'en' ? '💡 Hint' : '💡 സൂചന');
+}
+function newBtn() {
+  return el('button', 'btn small warn', currentLang === 'en' ? '🔄 New' : '🔄 പുതിയത്');
+}
+function redrawBtn() {
+  return el('button', 'btn small', currentLang === 'en' ? '🧽 Redraw' : '🧽 വീണ്ടും വരയ്ക്കുക');
+}
+function clearBtn() {
+  return el('button', 'btn small', currentLang === 'en' ? '🧽 Clear' : '🧽 എല്ലാം ഒഴിവാക്കുക');
+}
+function peekBtn() {
+  return el('button', 'btn warn small', currentLang === 'en' ? '💡 Peek' : '💡 നോക്കുക');
+}
+function resetBtn() {
+  return el('button', 'btn small', currentLang === 'en' ? '↩️ Back to start' : '↩️ തുടക്കത്തിലേക്ക്');
+}
 
 /* small util: numeric input */
 function numInput(w){
